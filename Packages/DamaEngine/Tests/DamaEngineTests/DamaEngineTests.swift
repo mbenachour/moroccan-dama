@@ -225,7 +225,7 @@ final class DamaEngineTests: XCTestCase {
             (7, 7, .white, true),
             (5, 3, .white, false),
             (2, 4, .black, false),
-            (0, 0, .black, true)
+            (0, 2, .black, true)
         ])
         var game = Game(board: board, turn: .white)
         XCTAssertTrue(game.apply(Move(path: [pos(7, 7), pos(6, 6)])))
