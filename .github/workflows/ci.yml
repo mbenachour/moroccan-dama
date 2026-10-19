@@ -1,0 +1,38 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  engine-tests:
+    name: DamaEngine unit tests
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Show Swift version
+        run: swift --version
+      - name: Run engine tests
+        run: swift test --package-path Packages/DamaEngine
+
+  app-build:
+    name: Build iOS app (unsigned)
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Show Xcode version
+        run: xcodebuild -version
+      - name: Build for iOS Simulator
+        run: |
+          set -o pipefail
+          xcodebuild build \
+            -project MoroccanDama.xcodeproj \
+            -scheme MoroccanDama \
+            -destination 'generic/platform=iOS Simulator' \
+            -derivedDataPath DerivedData \
+            CODE_SIGNING_ALLOWED=NO 2>&1 | tail -30

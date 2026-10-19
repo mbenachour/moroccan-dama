@@ -1,0 +1,58 @@
+name: Release build
+
+# Manual (or tag) release builds. These are UNSIGNED artifacts:
+# the simulator build runs as-is in Xcode Simulator, and the device
+# archive is ready to be signed once an Apple Developer team is set
+# in Xcode (DEVELOPMENT_TEAM). See README "Shipping" section.
+
+on:
+  workflow_dispatch:
+  push:
+    tags: ["v*"]
+
+jobs:
+  build-artifacts:
+    name: Build release artifacts
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build engine (release)
+        run: swift build -c release --package-path Packages/DamaEngine
+
+      - name: Build app for iOS Simulator
+        run: |
+          set -o pipefail
+          xcodebuild build \
+            -project MoroccanDama.xcodeproj \
+            -scheme MoroccanDama \
+            -configuration Release \
+            -destination 'generic/platform=iOS Simulator' \
+            -derivedDataPath DerivedData \
+            CODE_SIGNING_ALLOWED=NO 2>&1 | tail -20
+
+      - name: Package simulator app
+        run: |
+          APP=$(find DerivedData/Build/Products/Release-iphonesimulator -maxdepth 1 -name '*.app' | head -1)
+          echo "Packaging $APP"
+          ditto -c -k --keepParent "$APP" MoroccanDama-Simulator.zip
+
+      - name: Archive for device (unsigned)
+        run: |
+          set -o pipefail
+          xcodebuild archive \
+            -project MoroccanDama.xcodeproj \
+            -scheme MoroccanDama \
+            -configuration Release \
+            -destination 'generic/platform=iOS' \
+            -archivePath MoroccanDama.xcarchive \
+            CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO 2>&1 | tail -20
+          ditto -c -k --keepParent MoroccanDama.xcarchive MoroccanDama-Device-unsigned.zip
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: MoroccanDama-${{ github.ref_name }}
+          path: |
+            MoroccanDama-Simulator.zip
+            MoroccanDama-Device-unsigned.zip
+          if-no-files-found: error
