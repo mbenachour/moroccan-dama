@@ -2,7 +2,7 @@ import SwiftUI
 
 /// The front door: a drawn café scene — two men in djellaba over a dama
 /// board, mint tea at hand — shown for a breath at launch, then fading
-/// into the game. Pure presentation; the game lives underneath.
+/// into the game.
 struct SplashView: View {
     var body: some View {
         ZStack {
@@ -33,20 +33,23 @@ struct SplashView: View {
     }
 }
 
-/// Shows the splash over the game for a moment at launch. The game view
-/// model also reads launch arguments elsewhere; `-splashHold` keeps the
-/// splash up indefinitely for visual QA (screenshots workflow).
+/// Shows the splash INSTEAD of the game for a moment at launch — not
+/// stacked over it: as the window's root view the splash gets the same
+/// full-bleed layout the game's own background uses, while a stacked
+/// overlay was laid out inside an inset frame and left a strip of the
+/// game showing at the top. `-splashHold` keeps the splash up
+/// indefinitely for visual QA (screenshots workflow).
 struct RootView: View {
     @State private var showSplash = true
 
     var body: some View {
-        ZStack {
-            ContentView()
+        Group {
             if showSplash {
                 SplashView()
-                    .ignoresSafeArea()
                     .transition(.opacity)
-                    .zIndex(1)
+            } else {
+                ContentView()
+                    .transition(.opacity)
             }
         }
         .onAppear {
