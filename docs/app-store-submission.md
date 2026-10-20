@@ -8,9 +8,12 @@ account holder; everything else is done or copy-paste.
 
 | Requirement | Status |
 | --- | --- |
-| Apple Developer Program enrollment ($99/yr) | **[you]** — the only hard blocker |
-| Bundle ID `net.mohamedbenachour.moroccandama` | Set in project; register it in App Store Connect / Certificates portal |
-| Code signing (team) | **[you]** — Xcode: target → Signing & Capabilities → pick your team |
+| Apple Developer Program enrollment ($99/yr) | ✅ Active — renewed Oct 19, 2026 (order W1960501816) |
+| Team ID | ✅ `VAY36D9W77` ("mohamed ben achour", Individual) — set as DEVELOPMENT_TEAM in the project |
+| Bundle ID `net.mohamedbenachour.moroccandama` | ✅ Registered in the developer portal ("Moroccan Dama", no capabilities) |
+| App Store Connect app record | ✅ Created Oct 19, 2026 — "Dama — Moroccan Checkers", Apple ID **6824729003**, SKU `moroccandama`, v1.0 "Prepare for Submission" |
+| Privacy policy URL | ✅ Live — https://mbenachour.github.io/dama-privacy.html |
+| Code signing (team) | Team set in project; signing itself happens at archive time (your Mac's Xcode, or CI with an App Store Connect API key) |
 | App icon 1024×1024, no alpha channel | ✅ Done (`AppIcon-1024.png`, RGB) |
 | Launch screen | ✅ Done |
 | Version / build | ✅ 1.0 (1) |
