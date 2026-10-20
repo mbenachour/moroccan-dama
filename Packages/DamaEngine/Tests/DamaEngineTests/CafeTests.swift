@@ -114,6 +114,27 @@ final class CafeTests: XCTestCase {
         }
     }
 
+    func testCafeAINeverForgetsACapture() {
+        // Black to move. The man on (2,2) has a 2-capture chain; the man
+        // on (2,6) has a 1-capture; both have quiet moves. On EVERY
+        // difficulty Dama must take the maximum — she may never play
+        // quiet or take the single while the double exists (unless the
+        // search prices a trade as better, which it cannot here: the
+        // double wins two pieces for nothing).
+        let game = Game(board: boardWith([
+            (2, 2, .black, false), (2, 6, .black, false),
+            (3, 3, .white, false), (5, 5, .white, false), (3, 5, .white, false),
+        ]), turn: .black, variant: .cafe)
+        XCTAssertEqual(MoveGenerator.maxCaptureCount(on: game.board, for: .black), 2)
+        for difficulty in [DamaAI.Difficulty.easy, .medium, .hard] {
+            for _ in 0..<12 {
+                let move = DamaAI.bestMove(for: .black, in: game, difficulty: difficulty)
+                XCTAssertEqual(move?.captured.count, 2,
+                               "\(difficulty) must take the double capture, never forget it")
+            }
+        }
+    }
+
     func testHardAINeverHangsItsOnlyPiece() {
         // Black's only man can capture the white man (3,3) — or play quiet
         // and be huffed off the board, losing on the spot.

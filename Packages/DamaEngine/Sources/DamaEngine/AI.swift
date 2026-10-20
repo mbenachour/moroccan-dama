@@ -77,18 +77,12 @@ public struct DamaAI: Sendable {
         guard !moves.isEmpty else { return nil }
         if moves.count == 1 { return moves[0] }
 
-        // Café flavour: on the lower difficulties Dama sometimes simply
-        // *forgets* a capture and plays a quiet move — which hands the
-        // human a huff. Hard never forgets; its search prices the huff.
-        let capturesExist = MoveGenerator.maxCaptureCount(on: game.board, for: color) > 0
-        let quietMoves = moves.filter { !$0.isCapture }
-        if capturesExist, !quietMoves.isEmpty {
-            let forgetChance: Double = difficulty == .easy ? 0.30 : difficulty == .medium ? 0.08 : 0
-            if forgetChance > 0, Double.random(in: 0..<1) < forgetChance {
-                return quietMoves.randomElement()
-            }
-        }
-
+        // Dama never *forgets* a capture. The café search prices the
+        // huff into every line, so an under-capture is only ever chosen
+        // when it still comes out ahead after the opponent blows the
+        // most valuable offending piece — a calculated trade, never a
+        // lapse. (An earlier build deliberately "forgot" captures on
+        // the lower difficulties; the café doesn't work that way.)
         let depth = cafeDepth(for: difficulty)
         let scored = moves.map { move -> (move: Move, score: Int) in
             var next = game
@@ -100,9 +94,19 @@ public struct DamaAI: Sendable {
 
         switch difficulty {
         case .easy:
-            if Int.random(in: 0..<4) == 0 { return moves.randomElement() }
-            let nearBest = scored.filter { $0.score >= bestScore - 60 }
-            return nearBest.randomElement()?.move ?? scored.first?.move
+            // Easy still plays loosely — but its randomness is fenced
+            // inside the full-capture pool: it may pick a weaker line
+            // that takes the maximum, it may not skip a capture.
+            let maxCapture = MoveGenerator.maxCaptureCount(on: game.board, for: color)
+            let pool = maxCapture > 0
+                ? scored.filter { $0.move.captured.count == maxCapture }
+                : scored
+            let poolBest = pool.map { $0.score }.max() ?? bestScore
+            if Int.random(in: 0..<4) == 0 { return pool.randomElement()?.move }
+            let nearBest = pool.filter { $0.score >= poolBest - 60 }
+            return nearBest.randomElement()?.move
+                ?? pool.first { $0.score == poolBest }?.move
+                ?? scored.first { $0.score == bestScore }?.move
         case .medium, .hard:
             return scored.first { $0.score == bestScore }?.move
         }
