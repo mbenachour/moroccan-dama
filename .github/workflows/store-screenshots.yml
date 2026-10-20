@@ -1,0 +1,71 @@
+name: App Store screenshots
+
+# Produces store-listing screenshots at Apple's exact required sizes:
+# iPhone 6.9" = 1320x2868, iPad 13" = 2064x2752. Manual dispatch only;
+# the PNGs ride home as a workflow artifact for upload to App Store
+# Connect. States reuse the app's launch-arg QA hooks.
+on:
+  workflow_dispatch: {}
+
+jobs:
+  store-shots:
+    runs-on: macos-15
+    timeout-minutes: 40
+    strategy:
+      matrix:
+        include:
+          - device: "iPhone 16 Pro Max"
+            slug: iphone
+          - device: "iPad Pro 13-inch (M4)"
+            slug: ipad
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build for simulator
+        run: |
+          xcodebuild build \
+            -project MoroccanDama.xcodeproj \
+            -scheme MoroccanDama \
+            -destination 'generic/platform=iOS Simulator' \
+            -derivedDataPath "$RUNNER_TEMP/dd" \
+            CODE_SIGNING_ALLOWED=NO
+          APP_PATH=$(find "$RUNNER_TEMP/dd/Build/Products" -name 'MoroccanDama.app' -maxdepth 3 | head -1)
+          echo "APP_PATH=$APP_PATH" >> "$GITHUB_ENV"
+      - name: Boot device, install, screenshot the states
+        run: |
+          DEVICE='${{ matrix.device }}'
+          UDID=$(xcrun simctl list devices available | grep -F "$DEVICE" | head -1 | grep -oE '[0-9A-F-]{36}')
+          echo "Device: $DEVICE ($UDID)"
+          xcrun simctl boot "$UDID" || true
+          xcrun simctl bootstatus "$UDID" -b
+          mkdir -p "$RUNNER_TEMP/shots"
+          xcrun simctl install "$UDID" "$APP_PATH"
+          SHOTS=(
+            "splash|light|-splashHold"
+            "tournament|light|"
+            "cafe|light|-cafe"
+            "cafe-huff|light|-cafeHuff"
+          )
+          for ENTRY in "${SHOTS[@]}"; do
+            IFS='|' read -r NAME MODE ARGS <<< "$ENTRY"
+            xcrun simctl ui "$UDID" appearance "$MODE"
+            xcrun simctl terminate "$UDID" net.mohamedbenachour.moroccandama || true
+            if [ -n "$ARGS" ]; then
+              xcrun simctl launch "$UDID" net.mohamedbenachour.moroccandama $ARGS
+            else
+              xcrun simctl launch "$UDID" net.mohamedbenachour.moroccandama
+            fi
+            sleep 4
+            xcrun simctl io "$UDID" screenshot "$RUNNER_TEMP/shots/${{ matrix.slug }}-$NAME.png"
+          done
+          ls -la "$RUNNER_TEMP/shots"
+          python3 -c "
+          from PIL import Image
+          import glob
+          for f in sorted(glob.glob('$RUNNER_TEMP/shots/*.png')):
+              print(f.split('/')[-1], Image.open(f).size)
+          " || true
+      - uses: actions/upload-artifact@v4
+        with:
+          name: store-screenshots-${{ matrix.slug }}
+          path: ${{ runner.temp }}/shots/*.png
+          if-no-files-found: error
