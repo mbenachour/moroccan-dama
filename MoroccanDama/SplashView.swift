@@ -44,6 +44,7 @@ struct RootView: View {
             ContentView()
             if showSplash {
                 SplashView()
+                    .ignoresSafeArea()
                     .transition(.opacity)
                     .zIndex(1)
             }
