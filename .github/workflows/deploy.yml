@@ -25,10 +25,21 @@ concurrency:
 jobs:
   deploy:
     name: Archive, sign and upload
-    runs-on: macos-15
+    # Apple requires uploads built with the iOS 26 SDK (Xcode 26+);
+    # the macos-15 image tops out at Xcode 16.4 / iOS 18.5 SDK, which
+    # App Store Connect now rejects at validation.
+    runs-on: macos-26
     timeout-minutes: 40
     steps:
       - uses: actions/checkout@v4
+
+      - name: Select Xcode 26
+        run: |
+          ls /Applications | grep -i '^Xcode' || true
+          XC=$(ls -d /Applications/Xcode_26*.app 2>/dev/null | sort -V | tail -1)
+          if [ -n "$XC" ]; then sudo xcode-select -s "$XC/Contents/Developer"; fi
+          xcodebuild -version
+          echo "iOS SDK: $(xcrun --sdk iphoneos --show-sdk-version)"
 
       - name: Lay down the App Store Connect API key
         env:
