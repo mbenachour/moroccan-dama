@@ -6,7 +6,7 @@ import SwiftUI
 struct MoroccanDamaApp: App {
     var body: some Scene {
         WindowGroup {
-            ContentView()
+            RootView()
         }
     }
 }

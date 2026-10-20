@@ -63,6 +63,7 @@ jobs:
             "launch-dark|dark|"
             "cafe-board|light|-cafe"
             "cafe-huff|light|-cafeHuff"
+            "splash|light|-splashHold"
           )
           for ENTRY in "${SHOTS[@]}"; do
             IFS='|' read -r NAME MODE ARGS <<< "$ENTRY"
