@@ -3,8 +3,10 @@ import DamaEngine
 
 struct ContentView: View {
     @StateObject private var viewModel = GameViewModel()
+    @ObservedObject private var sound = SoundPlayer.shared
     @State private var showingRules = false
     @State private var confirmingNewGame = false
+    @State private var pendingVariantSwitch: GameVariant?
 
     var body: some View {
         ZStack {
@@ -13,9 +15,12 @@ struct ContentView: View {
             VStack(spacing: 14) {
                 header
                 capturedRow
+                modeRow
                 BoardView(viewModel: viewModel)
                     .padding(.horizontal, 12)
                 statusPill
+                calloutPill
+                huffBanner
                 pendingOptions
                 controls
                 Spacer(minLength: 0)
@@ -26,6 +31,19 @@ struct ContentView: View {
         .confirmationDialog("Start a new game?", isPresented: $confirmingNewGame) {
             Button("New game", role: .destructive) { viewModel.newGame() }
             Button("Keep playing", role: .cancel) {}
+        }
+        .confirmationDialog(
+            "Switch mode and start a new game?",
+            isPresented: Binding(
+                get: { pendingVariantSwitch != nil },
+                set: { if !$0 { pendingVariantSwitch = nil } }
+            )
+        ) {
+            Button("Switch to \(pendingVariantSwitch == .cafe ? "Café" : "Tournament")") {
+                if let pendingVariantSwitch { viewModel.setVariant(pendingVariantSwitch) }
+                pendingVariantSwitch = nil
+            }
+            Button("Keep playing", role: .cancel) { pendingVariantSwitch = nil }
         }
     }
 
@@ -43,6 +61,14 @@ struct ContentView: View {
             }
             Spacer()
             Button {
+                sound.isMuted.toggle()
+            } label: {
+                Image(systemName: sound.isMuted ? "speaker.slash.fill" : "speaker.wave.2.fill")
+                    .font(.title3)
+                    .foregroundStyle(Color(red: 0.48, green: 0.32, blue: 0.18))
+            }
+            .accessibilityLabel(sound.isMuted ? "Unmute sounds" : "Mute sounds")
+            Button {
                 showingRules = true
             } label: {
                 Image(systemName: "questionmark.circle")
@@ -52,6 +78,74 @@ struct ContentView: View {
             .accessibilityLabel("How to play")
         }
         .padding(.horizontal, 16)
+    }
+
+    // MARK: Mode switch
+
+    private var modeRow: some View {
+        HStack(spacing: 0) {
+            ForEach(GameVariant.allCases, id: \.self) { variant in
+                Button {
+                    requestVariant(variant)
+                } label: {
+                    Text(variant == .cafe ? "☕ Café" : "Tournament")
+                        .font(.subheadline.weight(.semibold))
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 7)
+                        .foregroundStyle(viewModel.variant == variant
+                                         ? Color.white
+                                         : Color(red: 0.48, green: 0.32, blue: 0.18))
+                        .background(
+                            Capsule().fill(viewModel.variant == variant
+                                           ? Color(red: 0.62, green: 0.38, blue: 0.20)
+                                           : Color.clear)
+                        )
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        .padding(3)
+        .background(Capsule().fill(Color.white.opacity(0.6)))
+        .padding(.horizontal, 16)
+    }
+
+    private func requestVariant(_ variant: GameVariant) {
+        guard variant != viewModel.variant else { return }
+        if viewModel.game.history.isEmpty {
+            viewModel.setVariant(variant)
+        } else {
+            pendingVariantSwitch = variant
+        }
+    }
+
+    // MARK: Café callouts
+
+    @ViewBuilder
+    private var calloutPill: some View {
+        if let callout = viewModel.callout {
+            Text(callout)
+                .font(.footnote.weight(.bold))
+                .foregroundStyle(Color.white)
+                .padding(.horizontal, 12)
+                .padding(.vertical, 6)
+                .background(Capsule().fill(Color(red: 0.62, green: 0.38, blue: 0.20)))
+                .transition(.opacity)
+        }
+    }
+
+    @ViewBuilder
+    private var huffBanner: some View {
+        if viewModel.awaitingHumanHuff {
+            HStack(spacing: 10) {
+                Text("💨 Tap a glowing piece to blow it off — or let Dama keep it:")
+                    .font(.footnote.weight(.semibold))
+                    .foregroundStyle(Color(red: 0.23, green: 0.16, blue: 0.11))
+                Button("Let it slide") { viewModel.declineHumanHuff() }
+                    .buttonStyle(.bordered)
+                    .tint(Color(red: 0.48, green: 0.32, blue: 0.18))
+            }
+            .padding(.horizontal, 16)
+        }
     }
 
     private var capturedRow: some View {
@@ -198,6 +292,12 @@ struct RulesView: View {
                     Text("Capturing is mandatory. If you can take pieces, you cannot make a quiet move.")
                     Text("You must take the longest line: if a move captures 3 pieces and another captures 1, the 3-piece line is the only legal move.")
                     Text("Multi-captures chain in one turn, turning corners as needed.")
+                }
+                Section("Café Mode — the Moroccan café rules") {
+                    Text("In Café Mode the pieces are bottle caps, captures are not forced, and the old café laws apply:")
+                    Text("Nefkh (نفخ) — 'blowing': end your turn having taken less than you could, and your opponent may blow one of the pieces that should have captured clean off the board. Pfff — gone.")
+                    Text("Koul (كول) — 'Eat!': the call that goes with it. If a capture is there, eat — or risk the blow.")
+                    Text("Yeddak 3la lbidaq (يداك على البيدق) — touch-move: touch one of your pieces and you must play it. No switching.")
                 }
                 Section("The dama (king)") {
                     Text("A dama flies: it moves any distance along an open diagonal, captures from far away, and can land on any empty square beyond the piece it takes.")

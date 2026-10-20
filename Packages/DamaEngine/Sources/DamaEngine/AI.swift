@@ -31,6 +31,9 @@ public struct DamaAI: Sendable {
     /// The best move found for `color` in `game`, or nil when there is none.
     /// Medium and hard are deterministic; easy deliberately blunders sometimes.
     public static func bestMove(for color: PlayerColor, in game: Game, difficulty: Difficulty) -> Move? {
+        if game.variant == .cafe {
+            return cafeBestMove(for: color, in: game, difficulty: difficulty)
+        }
         let moves = MoveGenerator.legalMoves(on: game.board, for: color)
         guard !moves.isEmpty else { return nil }
         if moves.count == 1 { return moves[0] }
@@ -54,6 +57,127 @@ public struct DamaAI: Sendable {
         case .medium, .hard:
             return scored.first { $0.score == bestScore }?.move
         }
+    }
+
+    // MARK: - Café Mode
+
+    /// Café search depth by difficulty. Café branching is wider than
+    /// tournament branching (quiet moves are always legal), so the café
+    /// search runs one ply shallower than the tournament search.
+    private static func cafeDepth(for difficulty: Difficulty) -> Int {
+        switch difficulty {
+        case .easy: return 2
+        case .medium: return 3
+        case .hard: return 5
+        }
+    }
+
+    private static func cafeBestMove(for color: PlayerColor, in game: Game, difficulty: Difficulty) -> Move? {
+        let moves = game.legalMoves
+        guard !moves.isEmpty else { return nil }
+        if moves.count == 1 { return moves[0] }
+
+        // Café flavour: on the lower difficulties Dama sometimes simply
+        // *forgets* a capture and plays a quiet move — which hands the
+        // human a huff. Hard never forgets; its search prices the huff.
+        let capturesExist = MoveGenerator.maxCaptureCount(on: game.board, for: color) > 0
+        let quietMoves = moves.filter { !$0.isCapture }
+        if capturesExist, !quietMoves.isEmpty {
+            let forgetChance: Double = difficulty == .easy ? 0.30 : difficulty == .medium ? 0.08 : 0
+            if forgetChance > 0, Double.random(in: 0..<1) < forgetChance {
+                return quietMoves.randomElement()
+            }
+        }
+
+        let depth = cafeDepth(for: difficulty)
+        let scored = moves.map { move -> (move: Move, score: Int) in
+            var next = game
+            next.applyUnchecked(move)
+            let score = -cafeNegamax(game: next, depth: depth - 1, alpha: -Score.mate, beta: Score.mate)
+            return (move, score)
+        }
+        let bestScore = scored.map { $0.score }.max() ?? 0
+
+        switch difficulty {
+        case .easy:
+            if Int.random(in: 0..<4) == 0 { return moves.randomElement() }
+            let nearBest = scored.filter { $0.score >= bestScore - 60 }
+            return nearBest.randomElement()?.move ?? scored.first?.move
+        case .medium, .hard:
+            return scored.first { $0.score == bestScore }?.move
+        }
+    }
+
+    /// Negamax over full café game states. A pending huff is resolved
+    /// inside the search by the decider removing the most valuable
+    /// offending piece — letting it slide is never better than taking
+    /// free material, so the single resolution is exact enough.
+    private static func cafeNegamax(game: Game, depth: Int, alpha: Int, beta: Int) -> Int {
+        if let result = game.result {
+            switch result {
+            case .win(let winner): return winner == game.turn ? Score.mate + depth : -Score.mate - depth
+            case .draw: return 0
+            }
+        }
+        var game = game
+        if game.pendingHuff != nil {
+            if let target = bestHuffTarget(in: game) {
+                game.applyHuff(at: target)
+            } else {
+                game.declineHuff()
+            }
+            return cafeNegamax(game: game, depth: depth, alpha: alpha, beta: beta)
+        }
+        if depth == 0 { return evaluate(board: game.board, for: game.turn) }
+
+        var moves = game.legalMoves
+        if moves.isEmpty { return -Score.mate - depth }
+        moves.sort { $0.captured.count > $1.captured.count }
+
+        var alpha = alpha
+        var best = -Score.mate - 100
+        for move in moves {
+            var next = game
+            next.applyUnchecked(move)
+            let score = -cafeNegamax(game: next, depth: depth - 1, alpha: -beta, beta: -alpha)
+            best = max(best, score)
+            alpha = max(alpha, score)
+            if alpha >= beta { break }
+        }
+        return best
+    }
+
+    /// The most valuable huff target in a pending-huff game: kings first,
+    /// then the most advanced man. Nil when no huff is pending.
+    public static func bestHuffTarget(in game: Game) -> Position? {
+        guard let huff = game.pendingHuff else { return nil }
+        return huff.targets.max { a, b in
+            huffValue(of: game.board[a], at: a) < huffValue(of: game.board[b], at: b)
+        }
+    }
+
+    private static func huffValue(of piece: Piece?, at position: Position) -> Int {
+        guard let piece else { return -1 }
+        if piece.isKing { return 1_000 }
+        // A man one step from crowning is worth more than one at home.
+        let advancement = piece.color == .white ? 7 - position.row : position.row
+        return 100 + advancement * 10
+    }
+
+    /// Whether `difficulty`, playing as the pending huff's decider, blows
+    /// a piece off — and which one. Hard always huffs the best target;
+    /// Medium usually does; Easy often lets it slide.
+    public static func huffTarget(for color: PlayerColor, in game: Game, difficulty: Difficulty) -> Position? {
+        guard let huff = game.pendingHuff, huff.decider == color else { return nil }
+        switch difficulty {
+        case .hard:
+            break
+        case .medium:
+            if Int.random(in: 0..<4) == 0 { return nil }
+        case .easy:
+            if Int.random(in: 0..<10) >= 4 { return nil }
+        }
+        return bestHuffTarget(in: game)
     }
 
     // MARK: - Search

@@ -25,6 +25,32 @@ public enum MoveGenerator {
         return quietMoves(on: board, for: color)
     }
 
+    /// Legal moves under a ruleset. Café play allows every capture line
+    /// (each is a *complete* chain — you may choose a shorter line than
+    /// another piece's, but a piece that starts capturing finishes its
+    /// chain) plus every quiet move; the maximum-capture obligation is
+    /// enforced socially, by huffing, instead of by the move list.
+    public static func moves(on board: Board, for color: PlayerColor, variant: GameVariant) -> [Move] {
+        switch variant {
+        case .tournament:
+            return legalMoves(on: board, for: color)
+        case .cafe:
+            return allCaptureMoves(on: board, for: color) + quietMoves(on: board, for: color)
+        }
+    }
+
+    /// The most pieces `color` could capture in a single move here.
+    public static func maxCaptureCount(on board: Board, for color: PlayerColor) -> Int {
+        allCaptureMoves(on: board, for: color).map { $0.captured.count }.max() ?? 0
+    }
+
+    /// The squares of `color`'s pieces that have at least one capture —
+    /// the pieces that *should* have captured, and therefore the pieces
+    /// exposed to huffing when a lesser move is played instead.
+    public static func captureOrigins(on board: Board, for color: PlayerColor) -> Set<Position> {
+        Set(allCaptureMoves(on: board, for: color).map { $0.from })
+    }
+
     /// Every capture sequence available to a color, before the maximum
     /// capture filter is applied. Each returned move is a *complete*
     /// sequence — a piece that can keep capturing must do so.

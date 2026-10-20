@@ -1,5 +1,20 @@
 import Foundation
 
+/// Which ruleset a game is played under.
+///
+/// - `tournament`: captures are mandatory and only maximum-capture lines
+///   are legal — the app simply never offers anything else.
+/// - `cafe`: the Moroccan café rules. Any quiet move or capture line may
+///   be played, but ending your turn having captured less than the maximum
+///   available exposes you to *nefkh* (نفخ, "huffing"): your opponent may
+///   blow one of the pieces that should have captured off the board before
+///   moving. Touch-move ("yeddak 3la lbidaq") is a UI-level rule and is
+///   enforced by the app, not the engine.
+public enum GameVariant: String, Codable, CaseIterable, Sendable {
+    case tournament
+    case cafe
+}
+
 /// The two players. White sits at the bottom of the board and moves first,
 /// as in Moroccan / Spanish-family dama.
 public enum PlayerColor: String, Codable, CaseIterable, Sendable {

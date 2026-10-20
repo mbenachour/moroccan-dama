@@ -57,12 +57,24 @@ jobs:
         run: |
           mkdir -p "$RUNNER_TEMP/shots"
           xcrun simctl install "$SIM_UDID" "$APP_PATH"
-          for MODE in light dark; do
+          # name|appearance|launch-args
+          SHOTS=(
+            "launch-light|light|"
+            "launch-dark|dark|"
+            "cafe-board|light|-cafe"
+            "cafe-huff|light|-cafeHuff"
+          )
+          for ENTRY in "${SHOTS[@]}"; do
+            IFS='|' read -r NAME MODE ARGS <<< "$ENTRY"
             xcrun simctl ui "$SIM_UDID" appearance "$MODE"
             xcrun simctl terminate "$SIM_UDID" net.mohamedbenachour.moroccandama || true
-            xcrun simctl launch "$SIM_UDID" net.mohamedbenachour.moroccandama
+            if [ -n "$ARGS" ]; then
+              xcrun simctl launch "$SIM_UDID" net.mohamedbenachour.moroccandama $ARGS
+            else
+              xcrun simctl launch "$SIM_UDID" net.mohamedbenachour.moroccandama
+            fi
             sleep 4
-            xcrun simctl io "$SIM_UDID" screenshot "$RUNNER_TEMP/shots/launch-$MODE.png"
+            xcrun simctl io "$SIM_UDID" screenshot "$RUNNER_TEMP/shots/$NAME.png"
           done
           ls -la "$RUNNER_TEMP/shots"
 
