@@ -58,7 +58,19 @@ final class GameViewModel: ObservableObject {
         //   -cafeHuff  Café Mode position where Dama has just missed a
         //               capture and the human is offered the huff
         let args = ProcessInfo.processInfo.arguments
-        if args.contains("-cafeHuff") {
+        if args.contains("-kings") || args.contains("-kingsT") {
+            // Visual-QA position: crowned pieces next to plain men, so a
+            // screenshot proves a dama can never be mistaken for a man.
+            variant = args.contains("-kingsT") ? .tournament : .cafe
+            var board = Board.empty
+            board[Position(row: 4, col: 4)] = Piece(color: .white, isKing: true)
+            board[Position(row: 5, col: 1)] = Piece(color: .white)
+            board[Position(row: 6, col: 6)] = Piece(color: .white)
+            board[Position(row: 2, col: 2)] = Piece(color: .black, isKing: true)
+            board[Position(row: 1, col: 5)] = Piece(color: .black)
+            board[Position(row: 3, col: 7)] = Piece(color: .black)
+            game = Game(board: board, turn: .white, variant: variant)
+        } else if args.contains("-cafeHuff") {
             variant = .cafe
             var board = Board.empty
             board[Position(row: 5, col: 1)] = Piece(color: .white)

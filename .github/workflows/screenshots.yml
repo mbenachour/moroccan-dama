@@ -63,6 +63,8 @@ jobs:
             "launch-dark|dark|"
             "cafe-board|light|-cafe"
             "cafe-huff|light|-cafeHuff"
+            "kings-cafe|light|-kings"
+            "kings-tournament|light|-kingsT"
             "splash|light|-splashHold"
           )
           for ENTRY in "${SHOTS[@]}"; do

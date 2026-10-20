@@ -97,19 +97,29 @@ struct BoardView: View {
     // MARK: Bottle caps (Café Mode)
 
     /// A crimped bottle cap — the traditional café piece. Gold for White,
-    /// deep red for Black, stamped with a star (or a crown for a dama).
+    /// deep red for Black, stamped with a star. A *dama* (king) is
+    /// unmistakable: café tradition stacks a second cap beneath it, and it
+    /// wears a big high-contrast crown inside a bold ring — after a field
+    /// report (2026-10-20) that crowned caps read as plain men at a glance.
     private func capView(piece: Piece, isSelected: Bool) -> some View {
         let isWhite = piece.color == .white
+        let capColors: [Color] = isWhite
+            ? [Color(red: 1.0, green: 0.86, blue: 0.42), Color(red: 0.76, green: 0.55, blue: 0.15)]
+            : [Color(red: 0.66, green: 0.18, blue: 0.14), Color(red: 0.32, green: 0.07, blue: 0.05)]
         return ZStack {
-            BottleCapShape()
-                .fill(
-                    LinearGradient(
+            if piece.isKing {
+                // The stacked second cap under a dama.
+                BottleCapShape()
+                    .fill(LinearGradient(
                         colors: isWhite
-                            ? [Color(red: 1.0, green: 0.86, blue: 0.42), Color(red: 0.76, green: 0.55, blue: 0.15)]
-                            : [Color(red: 0.66, green: 0.18, blue: 0.14), Color(red: 0.32, green: 0.07, blue: 0.05)],
-                        startPoint: .topLeading, endPoint: .bottomTrailing
-                    )
-                )
+                            ? [Color(red: 0.72, green: 0.52, blue: 0.16), Color(red: 0.50, green: 0.34, blue: 0.07)]
+                            : [Color(red: 0.40, green: 0.10, blue: 0.08), Color(red: 0.20, green: 0.04, blue: 0.03)],
+                        startPoint: .topLeading, endPoint: .bottomTrailing))
+                    .overlay(BottleCapShape().stroke(Color.black.opacity(0.4), lineWidth: 1))
+                    .offset(y: 5)
+            }
+            BottleCapShape()
+                .fill(LinearGradient(colors: capColors, startPoint: .topLeading, endPoint: .bottomTrailing))
                 .overlay(
                     BottleCapShape()
                         .stroke(Color.black.opacity(0.35), lineWidth: 1)
@@ -118,13 +128,27 @@ struct BoardView: View {
             Circle()
                 .fill(Color.white.opacity(isWhite ? 0.22 : 0.16))
                 .padding(7)
-            Image(systemName: piece.isKing ? "crown.fill" : "star.fill")
-                .resizable()
-                .scaledToFit()
-                .frame(width: piece.isKing ? 19 : 13, height: piece.isKing ? 19 : 13)
-                .foregroundStyle(isWhite
-                                 ? Color(red: 0.45, green: 0.30, blue: 0.05).opacity(0.85)
-                                 : Color(red: 1.0, green: 0.88, blue: 0.75).opacity(0.9))
+            if piece.isKing {
+                Circle()
+                    .stroke(isWhite ? Color(red: 0.55, green: 0.08, blue: 0.05)
+                                    : Color(red: 1.0, green: 0.90, blue: 0.60),
+                            lineWidth: 2.5)
+                    .padding(1.5)
+                Image(systemName: "crown.fill")
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: 24, height: 24)
+                    .foregroundStyle(isWhite ? Color(red: 0.55, green: 0.08, blue: 0.05)
+                                             : Color(red: 1.0, green: 0.90, blue: 0.60))
+            } else {
+                Image(systemName: "star.fill")
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: 13, height: 13)
+                    .foregroundStyle(isWhite
+                                     ? Color(red: 0.45, green: 0.30, blue: 0.05).opacity(0.85)
+                                     : Color(red: 1.0, green: 0.88, blue: 0.75).opacity(0.9))
+            }
         }
         .padding(3)
         .scaleEffect(isSelected ? 1.08 : 1.0)
@@ -152,11 +176,18 @@ struct BoardView: View {
                 )
                 .shadow(color: .black.opacity(0.35), radius: 2, y: 2)
             if piece.isKing {
+                // Kings get a bold extra ring plus a larger crown so a
+                // flying dama can never be mistaken for a plain man.
+                Circle()
+                    .stroke(piece.color == .white ? Color(red: 0.55, green: 0.08, blue: 0.05)
+                                                  : Color(red: 1.0, green: 0.90, blue: 0.60),
+                            lineWidth: 2.5)
+                    .padding(1.5)
                 Image(systemName: "crown.fill")
                     .resizable()
                     .scaledToFit()
-                    .frame(width: 18, height: 18)
-                    .foregroundStyle(piece.color == .white ? Color(red: 0.72, green: 0.5, blue: 0.1) : Color(red: 0.95, green: 0.77, blue: 0.3))
+                    .frame(width: 23, height: 23)
+                    .foregroundStyle(piece.color == .white ? Color(red: 0.55, green: 0.08, blue: 0.05) : Color(red: 1.0, green: 0.90, blue: 0.60))
             }
         }
         .padding(4)
