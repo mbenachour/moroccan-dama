@@ -294,9 +294,10 @@ struct RulesView: View {
                     Text("Multi-captures chain in one turn, turning corners as needed.")
                 }
                 Section("Café Mode — the Moroccan café rules") {
-                    Text("In Café Mode the pieces are bottle caps, captures are not forced, and the old café laws apply:")
-                    Text("Nefkh (نفخ) — 'blowing': end your turn having taken less than you could, and your opponent may blow one of the pieces that should have captured clean off the board. Pfff — gone.")
-                    Text("Koul (كول) — 'Eat!': the call that goes with it. If a capture is there, eat — or risk the blow.")
+                    Text("In Café Mode the pieces are bottle caps, and the old café laws apply. Captures work differently here:")
+                    Text("Nothing is forced. You may play ANY move — a quiet step, or a smaller capture with another piece — even when a bigger capture is available. (A piece that starts capturing still finishes its whole chain.)")
+                    Text("Nefkh (نفخ) — 'blowing': end your turn having taken less than the best capture available, and your opponent blows one of the pieces that should have captured clean off the board before moving. Pfff — gone. It happens every time; there is no letting it slide.")
+                    Text("Koul (كول) — 'Eat!': the call that goes with it. If a capture is there, eat — or get blown.")
                     Text("Yeddak 3la lbidaq (يداك على البيدق) — touch-move: touch one of your pieces and you must play it. No switching.")
                 }
                 Section("The dama (king)") {

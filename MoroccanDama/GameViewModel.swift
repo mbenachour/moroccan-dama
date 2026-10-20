@@ -121,7 +121,7 @@ final class GameViewModel: ObservableObject {
                 }
                 if variant == .cafe,
                    MoveGenerator.maxCaptureCount(on: game.board, for: humanColor) > 0 {
-                    return "Your move — a capture is there; skip it and Dama may blow."
+                    return "Your move — a capture is there; skip it and Dama will blow."
                 }
                 return "Your move."
             }

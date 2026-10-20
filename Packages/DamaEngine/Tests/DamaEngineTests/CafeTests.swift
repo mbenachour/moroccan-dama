@@ -107,6 +107,11 @@ final class CafeTests: XCTestCase {
         XCTAssertEqual(DamaAI.huffTarget(for: .white, in: game, difficulty: .hard),
                        Position(row: 2, col: 6),
                        "hard always huffs, and huffs the king")
+        for difficulty in [DamaAI.Difficulty.easy, .medium] {
+            XCTAssertEqual(DamaAI.huffTarget(for: .white, in: game, difficulty: difficulty),
+                           Position(row: 2, col: 6),
+                           "at every difficulty the decider huffs — café law is café law")
+        }
     }
 
     func testHardAINeverHangsItsOnlyPiece() {

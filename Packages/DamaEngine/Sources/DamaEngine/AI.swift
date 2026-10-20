@@ -164,19 +164,11 @@ public struct DamaAI: Sendable {
         return 100 + advancement * 10
     }
 
-    /// Whether `difficulty`, playing as the pending huff's decider, blows
-    /// a piece off — and which one. Hard always huffs the best target;
-    /// Medium usually does; Easy often lets it slide.
+    /// The piece the pending huff's decider blows off — always the most
+    /// valuable offender, at every difficulty. Café law is café law:
+    /// miss a capture and you get blown; there is no letting it slide.
     public static func huffTarget(for color: PlayerColor, in game: Game, difficulty: Difficulty) -> Position? {
         guard let huff = game.pendingHuff, huff.decider == color else { return nil }
-        switch difficulty {
-        case .hard:
-            break
-        case .medium:
-            if Int.random(in: 0..<4) == 0 { return nil }
-        case .easy:
-            if Int.random(in: 0..<10) >= 4 { return nil }
-        }
         return bestHuffTarget(in: game)
     }
 
