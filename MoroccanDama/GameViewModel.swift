@@ -109,7 +109,7 @@ final class GameViewModel: ObservableObject {
             return "Draw."
         case nil:
             if awaitingHumanHuff {
-                return "Dama missed a capture — Nfoukh, or let it slide?"
+                return "Dama missed a capture — Nfoukh?"
             }
             if isAIThinking { return "Dama is thinking…" }
             if game.turn == humanColor {
