@@ -1,0 +1,77 @@
+name: Deploy to App Store Connect
+
+# Signs with a cloud-managed distribution certificate (Xcode managed
+# signing, driven by the App Store Connect API key) and uploads the
+# build straight to App Store Connect / TestFlight.
+#
+# Required repo secrets (Settings → Secrets and variables → Actions):
+#   APPSTORE_API_KEY_ID        App Store Connect API Key ID
+#   APPSTORE_API_ISSUER_ID     App Store Connect API Issuer ID
+#   APPSTORE_API_KEY_BASE64    Base64 of the AuthKey_<KEYID>.p8 file
+#
+# Each run uploads with build number = the workflow run number, so
+# builds never collide. Marketing version stays at MARKETING_VERSION
+# in the project.
+
+on:
+  workflow_dispatch:
+  push:
+    tags: ["v*"]
+
+concurrency:
+  group: deploy
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Archive, sign and upload
+    runs-on: macos-15
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Lay down the App Store Connect API key
+        env:
+          API_KEY_ID: ${{ secrets.APPSTORE_API_KEY_ID }}
+          API_KEY_BASE64: ${{ secrets.APPSTORE_API_KEY_BASE64 }}
+        run: |
+          mkdir -p ~/.appstoreconnect/private_keys
+          echo "$API_KEY_BASE64" | base64 --decode > ~/.appstoreconnect/private_keys/AuthKey_${API_KEY_ID}.p8
+          echo "KEY_PATH=$HOME/.appstoreconnect/private_keys/AuthKey_${API_KEY_ID}.p8" >> "$GITHUB_ENV"
+
+      - name: Archive (signed, managed provisioning)
+        env:
+          API_KEY_ID: ${{ secrets.APPSTORE_API_KEY_ID }}
+          API_ISSUER_ID: ${{ secrets.APPSTORE_API_ISSUER_ID }}
+        run: |
+          set -o pipefail
+          xcodebuild archive \
+            -project MoroccanDama.xcodeproj \
+            -scheme MoroccanDama \
+            -configuration Release \
+            -destination 'generic/platform=iOS' \
+            -archivePath "$RUNNER_TEMP/MoroccanDama.xcarchive" \
+            -allowProvisioningUpdates \
+            -authenticationKeyPath "$KEY_PATH" \
+            -authenticationKeyID "$API_KEY_ID" \
+            -authenticationKeyIssuerID "$API_ISSUER_ID" \
+            CURRENT_PROJECT_VERSION=${{ github.run_number }} 2>&1 | tail -25
+
+      - name: Export and upload to App Store Connect
+        env:
+          API_KEY_ID: ${{ secrets.APPSTORE_API_KEY_ID }}
+          API_ISSUER_ID: ${{ secrets.APPSTORE_API_ISSUER_ID }}
+        run: |
+          set -o pipefail
+          xcodebuild -exportArchive \
+            -archivePath "$RUNNER_TEMP/MoroccanDama.xcarchive" \
+            -exportPath "$RUNNER_TEMP/export" \
+            -exportOptionsPlist ExportOptions.plist \
+            -allowProvisioningUpdates \
+            -authenticationKeyPath "$KEY_PATH" \
+            -authenticationKeyID "$API_KEY_ID" \
+            -authenticationKeyIssuerID "$API_ISSUER_ID" 2>&1 | tail -25
+
+      - name: Clean up API key material
+        if: always()
+        run: rm -f "$KEY_PATH"
