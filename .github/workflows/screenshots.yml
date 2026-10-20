@@ -1,0 +1,74 @@
+name: Simulator screenshots
+
+# Visual QA: builds the app for the simulator, launches it on a real
+# (simulated) device, and uploads screenshots in light and dark
+# appearance. A build that compiles is not a build that looks right —
+# this workflow exists so a human/agent actually LOOKS at the UI
+# before it ships. (Born from the 2026-10-19 TestFlight build whose
+# board rendered displaced/clipped and whose text washed out in
+# dark mode — green CI, broken UI.)
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "MoroccanDama/**"
+      - ".github/workflows/screenshots.yml"
+
+jobs:
+  screenshots:
+    name: Launch and screenshot
+    runs-on: macos-15
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build for simulator
+        run: |
+          set -o pipefail
+          xcodebuild build \
+            -project MoroccanDama.xcodeproj \
+            -scheme MoroccanDama \
+            -destination 'generic/platform=iOS Simulator' \
+            -derivedDataPath "$RUNNER_TEMP/dd" \
+            CODE_SIGNING_ALLOWED=NO 2>&1 | tail -5
+          APP=$(find "$RUNNER_TEMP/dd/Build/Products" -name 'MoroccanDama.app' | head -1)
+          echo "APP_PATH=$APP" >> "$GITHUB_ENV"
+          echo "Built: $APP"
+
+      - name: Boot an iPhone simulator
+        run: |
+          UDID=$(xcrun simctl list devices available --json | python3 -c "
+          import json,sys
+          d=json.load(sys.stdin)
+          for runtime, devs in d['devices'].items():
+              if 'iOS' not in runtime: continue
+              for dev in devs:
+                  if dev['name'].startswith('iPhone'):
+                      print(dev['udid']); raise SystemExit
+          ")
+          echo "Using simulator $UDID"
+          echo "SIM_UDID=$UDID" >> "$GITHUB_ENV"
+          xcrun simctl boot "$UDID" || true
+          xcrun simctl bootstatus "$UDID" -b
+
+      - name: Install, launch, screenshot (light and dark)
+        run: |
+          mkdir -p "$RUNNER_TEMP/shots"
+          xcrun simctl install "$SIM_UDID" "$APP_PATH"
+          for MODE in light dark; do
+            xcrun simctl ui "$SIM_UDID" appearance "$MODE"
+            xcrun simctl terminate "$SIM_UDID" net.mohamedbenachour.moroccandama || true
+            xcrun simctl launch "$SIM_UDID" net.mohamedbenachour.moroccandama
+            sleep 4
+            xcrun simctl io "$SIM_UDID" screenshot "$RUNNER_TEMP/shots/launch-$MODE.png"
+          done
+          ls -la "$RUNNER_TEMP/shots"
+
+      - name: Upload screenshots
+        uses: actions/upload-artifact@v4
+        with:
+          name: simulator-screenshots
+          path: ${{ runner.temp }}/shots/*.png
+          if-no-files-found: error

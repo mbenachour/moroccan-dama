@@ -36,9 +36,10 @@ struct ContentView: View {
             VStack(alignment: .leading, spacing: 1) {
                 Text("Dama")
                     .font(.largeTitle.bold())
+                    .foregroundStyle(Color(red: 0.23, green: 0.16, blue: 0.11))
                 Text("Moroccan Checkers")
                     .font(.subheadline)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(Color(red: 0.48, green: 0.38, blue: 0.28))
             }
             Spacer()
             Button {
@@ -46,6 +47,7 @@ struct ContentView: View {
             } label: {
                 Image(systemName: "questionmark.circle")
                     .font(.title2)
+                    .foregroundStyle(Color(red: 0.48, green: 0.32, blue: 0.18))
             }
             .accessibilityLabel("How to play")
         }
@@ -72,7 +74,7 @@ struct ContentView: View {
             }
             Text("\(label): \(count)")
                 .font(.footnote.weight(.medium))
-                .foregroundStyle(.secondary)
+                .foregroundStyle(Color(red: 0.48, green: 0.38, blue: 0.28))
         }
     }
 
@@ -83,6 +85,7 @@ struct ContentView: View {
             }
             Text(viewModel.statusText)
                 .font(.headline)
+                .foregroundStyle(Color(red: 0.23, green: 0.16, blue: 0.11))
         }
         .padding(.horizontal, 14)
         .padding(.vertical, 8)
@@ -95,6 +98,7 @@ struct ContentView: View {
             VStack(alignment: .leading, spacing: 6) {
                 Text("Two capture lines land there — which pieces do you take?")
                     .font(.footnote.weight(.semibold))
+                    .foregroundStyle(Color(red: 0.23, green: 0.16, blue: 0.11))
                 ForEach(Array(viewModel.pendingOptions.enumerated()), id: \.offset) { _, move in
                     Button {
                         viewModel.choosePendingOption(move)
@@ -111,12 +115,33 @@ struct ContentView: View {
 
     private var controls: some View {
         VStack(spacing: 10) {
-            Picker("Difficulty", selection: $viewModel.difficulty) {
+            // Custom segmented control: the system Picker resolves its
+            // colors from the device appearance, which washed the labels
+            // out against this app's fixed café palette. Explicit colors
+            // read identically in light and dark mode.
+            HStack(spacing: 0) {
                 ForEach(DamaAI.Difficulty.allCases, id: \.self) { level in
-                    Text(level.displayName).tag(level)
+                    Button {
+                        viewModel.difficulty = level
+                    } label: {
+                        Text(level.displayName)
+                            .font(.subheadline.weight(.semibold))
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 8)
+                            .foregroundStyle(viewModel.difficulty == level
+                                             ? Color.white
+                                             : Color(red: 0.48, green: 0.32, blue: 0.18))
+                            .background(
+                                Capsule().fill(viewModel.difficulty == level
+                                               ? Color(red: 0.48, green: 0.32, blue: 0.18)
+                                               : Color.clear)
+                            )
+                    }
+                    .buttonStyle(.plain)
                 }
             }
-            .pickerStyle(.segmented)
+            .padding(3)
+            .background(Capsule().fill(Color.white.opacity(0.6)))
             .padding(.horizontal, 16)
 
             HStack(spacing: 12) {
@@ -128,16 +153,27 @@ struct ContentView: View {
                     }
                 } label: {
                     Label("New game", systemImage: "arrow.counterclockwise")
+                        .font(.headline)
+                        .foregroundStyle(Color.white)
+                        .padding(.horizontal, 18)
+                        .padding(.vertical, 10)
+                        .background(Capsule().fill(Color(red: 0.48, green: 0.32, blue: 0.18)))
                 }
-                .buttonStyle(.borderedProminent)
+                .buttonStyle(.plain)
 
                 Button {
                     viewModel.undoRound()
                 } label: {
                     Label("Take back", systemImage: "arrow.uturn.backward")
+                        .font(.headline)
+                        .foregroundStyle(Color(red: 0.48, green: 0.32, blue: 0.18))
+                        .padding(.horizontal, 18)
+                        .padding(.vertical, 10)
+                        .background(Capsule().fill(Color.white.opacity(0.75)))
                 }
-                .buttonStyle(.bordered)
+                .buttonStyle(.plain)
                 .disabled(!viewModel.canUndo)
+                .opacity(viewModel.canUndo ? 1 : 0.45)
             }
         }
     }
