@@ -19,7 +19,7 @@ jobs:
           - device: "iPad Pro 13-inch (M4)"
             slug: ipad
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Build for simulator
         run: |
           xcodebuild build \
