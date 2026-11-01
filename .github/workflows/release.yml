@@ -15,7 +15,7 @@ jobs:
     name: Build release artifacts
     runs-on: macos-15
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Build engine (release)
         run: swift build -c release --package-path Packages/DamaEngine
