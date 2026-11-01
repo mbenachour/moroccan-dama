@@ -64,7 +64,7 @@ jobs:
           for f in sorted(glob.glob('$RUNNER_TEMP/shots/*.png')):
               print(f.split('/')[-1], Image.open(f).size)
           " || true
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: store-screenshots-${{ matrix.slug }}
           path: ${{ runner.temp }}/shots/*.png
